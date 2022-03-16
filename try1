@@ -1,0 +1,321 @@
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+    <title>Lumifish Calculator</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-polyfill/6.23.0/polyfill.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/react/15.3.0/react-with-addons.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/react/15.3.0/react-dom.js"></script>
+    <script src="//code.jquery.com/jquery-2.1.4.min.js"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/lodash.js/4.17.4/lodash.js"></script>
+    <script src="//static.parastorage.com/services/js-sdk/1.425.0/js/wix.min.js"></script>
+
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <!-- <link rel="stylesheet" type="text/css" href="/app.css"> -->
+
+    <style wix-style>
+      .lumi-calc {
+          background: {{style._appBackground #FFFFFF}} !important;
+          border-width: {{style._appBorderSize 2}}px;
+          border-color: {{style._appBorderColor #EBEBEB}};
+          border-style: solid;
+          border-radius: {{style._appBorderRadius 0}}px;
+      }
+
+      body *.ant-input::-webkit-input-placeholder,
+      body *.lumi-numeric-input::-webkit-input-placeholder {
+          color: {{style._appInputPlaceholderColor #EEEEEE}};
+      }
+
+      body *.ant-input:-moz-placeholder,
+      body *.lumi-numeric-input:-moz-placeholder {
+        color: {{style._appInputPlaceholderColor #EEEEEE}};
+      }
+
+      body *.ant-input::-moz-placeholder,
+      body *.lumi-numeric-input::-moz-placeholder {
+        color: {{style._appInputPlaceholderColor #EEEEEE}};
+      }
+
+      body *.ant-input:-ms-input-placeholder,
+      body *.lumi-numeric-input:-ms-input-placeholder {
+        color: {{style._appInputPlaceholderColor #EEEEEE}};
+      }
+
+      textarea {
+        -webkit-appearance: none;
+      }
+
+      .lumi-calc-title {
+          font: normal normal normal 15px/18px avenir-lt-w01_85-heavy1475544,sans-serif;
+          {{style._titleFont}};
+          color: {{style._titleColor #000000}} !important;
+          background-color: {{style._titleBackgroundColor #EBEBEB}};
+      }
+
+      .lumi-calc-title > * {
+        color: {{style._titleColor #000000}};
+      }
+
+      .pfix {
+          {{style._textFont Body-M}};
+          color: {{style._textColor #000000}};
+      }
+
+      .ant-input-number,
+      .ant-input-wrapper
+      .ant-input,
+      .ant-select-selection,
+      .lumi-input-container,
+      textarea.ant-input {
+          border-width: {{style._inputBorderSize 2}}px !important;
+          border-radius: {{style._inputBorderRadius 0}}px !important;
+          border-color: {{style._inputBorderColor #EBEBEB}} !important;
+          border-style: solid;
+          -webkit-appearance: none;
+      }
+
+      .ant-input-number-input-wrap .ant-input-number-input,
+      .ant-select-selection,
+      .ant-input-wrapper .ant-input,
+      .lumi-input-container .lumi-numeric-input,
+      textarea.ant-input {
+          font: normal normal normal 15px/18px avenir-lt-w01_85-heavy1475544,sans-serif;
+          {{style._inputFont}} !important;
+          color: {{style._inputColor #000000}} !important;
+          -webkit-appearance: none;
+      }
+
+      .ant-select-dropdown {
+          border-width: {{style._inputBorderSize 2}}px !important;
+          border-radius: {{style._inputBorderRadius 0}}px !important;
+          border-color: {{style._inputBorderColor #EBEBEB}} !important;
+          border-style: solid;
+          background-color: {{style._appInputColor #EBEBEB}} !important;
+      }
+
+      .ant-select-selection {
+          background-color: {{style._appInputColor #FFFFFF}} !important;
+      }
+
+      .ant-select-dropdown-menu-item-selected,
+      .ant-select-dropdown-menu-item {
+        color: {{style._inputColor #000000}} !important;
+      }
+
+      .ant-select-dropdown-menu-item-selected {
+        background-color: {{style._appInputHighlightColor #000000}} !important;
+      }
+
+      .ant-select-dropdown-menu-item-selected span {
+        filter: invert(100%);
+        color: {{style._appInputHighlightColor #000000}} !important;
+      }
+
+      .ant-select-dropdown-menu-item:hover {
+        background-color: {{style._appInputHighlightColor #000000}} !important;
+      }
+
+      .ant-select-dropdown-menu-item:hover span {
+        filter: invert(100%);
+        color: {{style._appInputHighlightColor #000000}} !important;
+      }
+
+      .ant-input-number-input, .ant-input-wrapper .ant-input, .ant-select-selection,
+      .lumi-numeric-input, .ant-radio .ant-radio-inner, textarea.ant-input,
+      .ant-checkbox .ant-checkbox-inner {
+          background-color: {{style._appInputColor #FFFFFF}};
+          -webkit-appearance: none;
+      }
+
+      .ant-form-item-control p,
+      .ant-radio-wrapper > span:nth-child(2),
+      .ant-checkbox-wrapper > span:nth-child(2),
+      .text-count {
+          font: normal normal normal 15px/18px avenir-lt-w01_35-light1475496,sans-serif;
+          {{style._textFont}};
+          color: {{style._textColor #000000}};
+      }
+
+      .lumi-calc .ant-form-item-label label {
+          font: normal normal normal 13px/16px avenir-lt-w01_85-heavy1475544,sans-serif;
+          {{style._labelFont}};
+          color: {{style._labelColor #000000}};
+      }
+
+      .formula-element .ant-form-item-label label {
+          font: normal normal normal 13px/16px avenir-lt-w01_85-heavy1475544,sans-serif;
+          {{style._resultLabelFont}};
+          color: {{style._resultLabelColor #000000}};
+      }
+
+      .ant-radio-inner, .ant-checkbox-inner {
+          border-color: {{style._inputBorderColor #EBEBEB}} !important;
+      }
+
+      .ant-radio-inner:after {
+          background-color: {{style._appInputHighlightColor #000000}} !important;
+      }
+
+      .ant-checkbox-checked .ant-checkbox-inner {
+          background-color: {{style._appInputHighlightColor #000000}} !important;
+      }
+
+      #wix-calc .ant-form-item .ant-slider {
+          padding: 0;
+          height: {{style._sliderSize 4}}px !important;
+          background-color: {{style._sliderBaseColor #EBEBEB}};
+          /*background-color: {{style._inputBorderColor #EBEBEB}} !important;*/
+      }
+
+      #wix-calc .ant-form-item .ant-slider-step {
+          height: {{style._sliderSize 4}}px;
+      }
+
+      #wix-calc .ant-form-item .ant-slider-dot {
+          min-width: 8px;
+          min-height: 8px;
+          width: calc(({{style._sliderSize 4}} * 2) * 1px);
+          height: calc(({{style._sliderSize 4}} * 2) * 1px);
+          border: 2px solid {{style._sliderBaseColor #EBEBEB}};
+      }
+
+      #wix-calc .ant-form-item .ant-slider-dot-active {
+          border-color: {{style._sliderHighlightColor #000000}};
+      }
+
+      #wix-calc .ant-form-item .ant-slider-handle {
+          width: calc(({{style._sliderSize 4}} * 4) * 1px);
+          height: calc(({{style._sliderSize 4}} * 4) * 1px);
+          border-color: {{style._sliderHighlightColor #000000}};
+      }
+
+      #wix-calc .ant-form-item .ant-slider-track {
+          height: {{style._sliderSize 4}}px;
+          background-color: {{style._sliderHighlightColor #000000}};
+      }
+
+      #wix-calc .ant-form-item .ant-slider-mark-text {
+          {{style._textFont}};
+          color: {{style._textColor #000000}};
+          opacity: 0.65;
+          font-size: 12px;
+      }
+
+      .formula-element {
+          background-color: {{style._resultBackgroundColor #EBEBEB}};
+      }
+
+      .formula-element span.result,
+      .formula-element span.p-p-fix {
+          font: normal normal normal 40px/50px avenir-lt-w01_85-heavy1475544,sans-serif;
+          {{style._resultFont}};
+          color: {{style._resultColor #000000}};
+      }
+
+      .send-button .ant-btn {
+          background-color: {{style._buttonBackgroundColor #FFFFFF}};
+          color: {{style._buttonTextColor #000000}};
+          border-width: {{style._buttonBorderSize 1}}px;
+          border-radius: {{style._buttonBorderRadius 6}}px;
+          border-color: {{style._buttonBorderColor color-3}};
+      }
+
+      .send-button .ant-btn:hover {
+          background-color: {{style._buttonHighlightColor color-7}};
+          color: {{style._buttonTextHColor #FFFFFF}};
+      }
+
+      .element-divider {
+          border-color: {{style._appBorderColor #EBEBEB}};
+      }
+
+      .gauge-field {
+          background-color: {{style._gaugeBackgroundColor #EBEBEB}};
+          border-radius: {{style._inputBorderRadius 0}}px;
+      }
+
+      #wix-calc .gauge-container .gauge-indicator {
+          width: {{style._gaugeIndicatorSize 1}}px;
+          background-color: {{style._gaugeIndicatorColor #000000}} !important;
+      }
+
+      #wix-calc .gauge-container .gauge-indicator-count {
+          color: {{style._gaugeIndicatorColor #000000}};
+      }
+
+      #wix-calc .gauge-container .gauge-step {
+          color: {{style._textColor #000000}};
+          background-color: {{style._textColor #000000}};
+          opacity: 0.65;
+      }
+
+      #wix-calc .lumi-text-gauge {
+        background-color: {{style._textGaugeTitleBackgroundColor #EBEBEB}};
+      }
+
+      #wix-calc .lumi-text-gauge .segment-label {
+        {{style._textGaugeFont}};
+        background-color: {{style._textGaugeTitleBackgroundColor #EBEBEB}};
+      }
+
+      #wix-calc .lumi-text-gauge .segment-description {
+        color: {{style._textGaugeDescFontColor #000000}};
+        background-color: {{style._textGaugeDescBackgroundColor #EBEBEB}};
+        font: normal normal normal 15px/18px avenir-lt-w01_35-light1475496,sans-serif;
+        {{style._textFont}};
+      }
+
+      #wix-calc .mail-element {
+        background-color:  {{style._mailBackgroundColor #FFFFFF}};
+      }
+
+      #wix-calc .mail-element input {
+        width: 100% !important;
+        font: normal normal normal 12px/15px avenir-lt-w01_35-light1475496,sans-serif;
+        {{style._mailFieldTextFont}};
+        color: {{style._mailFieldTextColor #000000}};
+        border: {{style._mailFieldBorderSize 2}}px solid {{style._mailFieldBorderColor #EBEBEB}};
+        background-color: {{style._mailFieldBackgroundColor #FFFFFF}};
+        border-radius: {{style._mailFieldBorderRadius 0}}px;
+      }
+
+      #wix-calc .mail-element button {
+        background-color: {{style._mailButtonBackgroundColor #EBEBEB}};
+        border: {{style._mailButtonBorderSize 0}}px solid {{style._mailButtonBorderColor #EBEBEB}};
+        border-radius: {{style._mailButtonBorderRadius 6}}px;
+      }
+
+      #wix-calc .mail-element button span {
+        text-align: center;
+        font: normal normal normal 12px/12px avenir-lt-w01_35-light1475496,sans-serif;
+        {{style._mailButtonTextFont}};
+        color: {{style._mailButtonTextColor #000000}};
+        line-height: 1;
+      }
+
+      #wix-calc .mail-element button .calconic-submit-success {
+        color: {{style._mailButtonConfirmColor #00B16A}};
+      }
+
+      #wix-calc .mail-element button rect {
+        fill: {{style._mailButtonLoaderColor #33D6D6}};
+      }
+
+      #wix-calc .mail-element input::-webkit-input-placeholder,
+      #wix-calc .mail-element input:-moz-placeholder,
+      #wix-calc .mail-element input::-moz-placeholder,
+      #wix-calc .mail-element input:-ms-input-placeholder {
+        color: {{style._mailPlaceholderColor #EEEEEE}};
+      }
+    </style>
+  <link href="/static/css/public.9daba9c8.css" rel="stylesheet"></head>
+  <body>
+    <div id="wix-calc"></div>
+
+    <!-- <script src="/bundle.js"></script> -->
+  <script type="text/javascript" src="/static/js/public.ffc1bf48.js"></script></body>
+</html>
