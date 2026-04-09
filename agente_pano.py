@@ -34,12 +34,16 @@ tools = [
             "Executa uma query SQL SELECT no banco de dados de pedidos do ecommerce Pano. "
             "Use view_orders para dados de pedidos (1 linha por pedido, sem duplicar faturamento). "
             "Use view_order_items para análise de produtos e variações (1 linha por item). "
+            "Use view_trafego_geral para dados de mídia paga (meta, google, tiktok). "
             "Campos de view_orders: id, code, total, subtotal, discount, status, payment_status, "
             "fulfillment_status, created_at, updated_at, customer_name, customer_email, customer_phone, "
             "city, state, payment_method, shipping_name, shipping_price. "
             "Campos de view_order_items: order_id, code, status, payment_status, created_at, "
             "customer_name, customer_email, product_id, item_name, item_variation, item_quantity, "
             "item_total, item_discount. "
+            "Campos de view_trafego_geral: dia (date), fonte (text: meta/google/tiktok), "
+            "investimento (numeric), impressoes (numeric), cliques (numeric), "
+            "conversoes (numeric), receita_ads (numeric), cpm (numeric), cpc (numeric), ctr (numeric). "
             "payment_status possíveis: approved, pending, denied, refunded, canceled. "
             "status possíveis: open, archived, canceled. "
             "Datas no formato: '2026-03-27' ou com cast: created_at::date."
@@ -58,18 +62,22 @@ tools = [
 ]
 
 system_prompt = """Você é um assistente especializado em análise de dados do ecommerce Pano.
-Você responde perguntas sobre vendas, faturamento, produtos e clientes consultando o banco de dados.
+Você responde perguntas sobre vendas, faturamento, produtos, clientes e mídia paga consultando o banco de dados.
 
 Regras importantes:
 - Para faturamento e contagem de pedidos, use sempre view_orders (evita duplicar por causa de múltiplos itens por pedido)
 - Para análise de produtos, variações e quantidades vendidas, use view_order_items
+- Para dados de mídia paga (investimento, cliques, impressões), use view_trafego_geral
 - Para pedidos aprovados, filtre com: payment_status = 'approved'
 - Para cancelados/estornados: status = 'canceled' OR payment_status IN ('refunded', 'canceled')
-- Datas: use created_at::date para comparar apenas a data
+- Datas: use created_at::date para comparar apenas a data; em view_trafego_geral use o campo dia diretamente
 - Sempre que calcular faturamento de pedidos, some o campo total em view_orders (não em view_order_items)
 - Para quantidade de itens vendidos, some item_quantity em view_order_items
+- Para ROAS: divida SUM(total) de view_orders (payment_status = 'approved') por SUM(investimento) de view_trafego_geral no mesmo período
+- Para CPV (custo por venda): divida SUM(investimento) de view_trafego_geral pelo número de pedidos aprovados
 - Responda sempre em português, de forma clara e direta
 - Formate valores monetários com R$ e duas casas decimais
+- Formate ROAS com duas casas decimais seguido de 'x' (ex: 3.45x)
 - Se não houver dados para o período, informe claramente"""
 
 def chat(user_question: str, messages: list) -> tuple[str, list]:
