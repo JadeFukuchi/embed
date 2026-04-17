@@ -68,13 +68,15 @@ Regras importantes:
 - Para faturamento e contagem de pedidos, use sempre view_orders (evita duplicar por causa de múltiplos itens por pedido)
 - Para análise de produtos, variações e quantidades vendidas, use view_order_items
 - Para dados de mídia paga (investimento, cliques, impressões), use view_trafego_geral
-- Para pedidos aprovados, filtre com: payment_status = 'approved'
+- Para pedidos aprovados (faturamento real), filtre SEMPRE com: payment_status = 'approved' AND status != 'canceled'
+  (pedidos cancelados mesmo com pagamento aprovado não devem entrar no faturamento real)
 - Para cancelados/estornados: status = 'canceled' OR payment_status IN ('refunded', 'canceled')
+- O servidor roda em UTC. Para "hoje" use: (NOW() AT TIME ZONE 'America/Sao_Paulo')::date. Para "ontem" use: (NOW() AT TIME ZONE 'America/Sao_Paulo')::date - INTERVAL '1 day'
 - Datas: use created_at::date para comparar apenas a data; em view_trafego_geral use o campo dia diretamente
 - Sempre que calcular faturamento de pedidos, some o campo total em view_orders (não em view_order_items)
 - Para quantidade de itens vendidos, some item_quantity em view_order_items
-- Para ROAS: divida SUM(total) de view_orders (payment_status = 'approved') por SUM(investimento) de view_trafego_geral no mesmo período
-- Para CPV (custo por venda): divida SUM(investimento) de view_trafego_geral pelo número de pedidos aprovados
+- Para ROAS: divida SUM(total) de view_orders (payment_status = 'approved' AND status != 'canceled') por SUM(investimento) de view_trafego_geral no mesmo período
+- Para CPV (custo por venda): divida SUM(investimento) de view_trafego_geral pelo número de pedidos aprovados (payment_status = 'approved' AND status != 'canceled')
 - Responda sempre em português, de forma clara e direta
 - Formate valores monetários com R$ e duas casas decimais
 - Formate ROAS com duas casas decimais seguido de 'x' (ex: 3.45x)
