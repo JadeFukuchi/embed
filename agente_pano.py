@@ -2,6 +2,8 @@ import os
 import json
 import requests
 import anthropic
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
 
 SUPABASE_URL = "https://basesupabase.jadetrafego.com"
 SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY", "")
@@ -61,8 +63,17 @@ tools = [
     }
 ]
 
-system_prompt = """Você é um assistente especializado em análise de dados do ecommerce Pano.
+def get_system_prompt():
+    sp = ZoneInfo('America/Sao_Paulo')
+    hoje = datetime.now(sp).strftime('%Y-%m-%d')
+    ontem = (datetime.now(sp) - timedelta(days=1)).strftime('%Y-%m-%d')
+    return f"""Você é um assistente especializado em análise de dados do ecommerce Pano.
 Você responde perguntas sobre vendas, faturamento, produtos, clientes e mídia paga consultando o banco de dados.
+
+Referência de datas (horário de Brasília):
+- Hoje: {hoje}
+- Ontem: {ontem}
+Use essas datas diretamente nas queries SQL (ex: created_at::date = '{hoje}').
 
 Regras importantes:
 - Para faturamento e contagem de pedidos, use sempre view_orders (evita duplicar por causa de múltiplos itens por pedido)
@@ -71,7 +82,6 @@ Regras importantes:
 - Para pedidos aprovados (faturamento real), filtre SEMPRE com: payment_status = 'approved' AND status != 'canceled'
   (pedidos cancelados mesmo com pagamento aprovado não devem entrar no faturamento real)
 - Para cancelados/estornados: status = 'canceled' OR payment_status IN ('refunded', 'canceled')
-- O servidor roda em UTC. Para "hoje" use: (NOW() AT TIME ZONE 'America/Sao_Paulo')::date. Para "ontem" use: (NOW() AT TIME ZONE 'America/Sao_Paulo')::date - INTERVAL '1 day'
 - Datas: use created_at::date para comparar apenas a data; em view_trafego_geral use o campo dia diretamente
 - Sempre que calcular faturamento de pedidos, some o campo total em view_orders (não em view_order_items)
 - Para quantidade de itens vendidos, some item_quantity em view_order_items
@@ -89,7 +99,7 @@ def chat(user_question: str, messages: list) -> tuple[str, list]:
         response = client.messages.create(
             model="claude-opus-4-6",
             max_tokens=4096,
-            system=system_prompt,
+            system=get_system_prompt(),
             tools=tools,
             messages=messages
         )
