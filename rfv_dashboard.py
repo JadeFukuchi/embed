@@ -28,7 +28,7 @@ def execute_sql(sql):
     r = requests.post(
         f"{SUPABASE_URL}/rest/v1/rpc/execute_analytics_query",
         headers=HEADERS,
-        json={"query_text": sql},
+        json={"query_text": sql.strip()},
         timeout=30,
     )
     if r.status_code == 200:
