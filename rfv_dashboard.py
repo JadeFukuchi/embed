@@ -27,15 +27,18 @@ SEGMENTOS = [
 
 
 def execute_sql(sql):
-    r = requests.post(
-        f"{SUPABASE_URL}/rest/v1/rpc/execute_analytics_query",
-        headers=HEADERS,
-        json={"query_text": sql.strip()},
-        timeout=30,
-    )
-    if r.status_code == 200:
-        return r.json() or []
-    return []
+    try:
+        r = requests.post(
+            f"{SUPABASE_URL}/rest/v1/rpc/execute_analytics_query",
+            headers=HEADERS,
+            json={"query_text": sql.strip()},
+            timeout=30,
+        )
+        if r.status_code == 200:
+            return r.json() or []
+        return []
+    except Exception:
+        return []
 
 
 @app.route("/api/resumo")
@@ -253,10 +256,9 @@ var COL_KEYS   = ['customer_name','customer_email','telefone','documento','nasci
 var COL_LABELS = ['Nome','Email','Telefone','Documento','Nascimento','Pedidos','Total Gasto'];
 
 async function init() {
-  var r1 = fetch('/api/resumo');
-  var r2 = fetch('/api/criterios');
-  var resumo = await (await r1).json();
-  var crit   = await (await r2).json();
+  var resumo = [], crit = [];
+  try { resumo = await (await fetch('/api/resumo')).json();   } catch(e) {}
+  try { crit   = await (await fetch('/api/criterios')).json(); } catch(e) {}
   crit.forEach(function(c) { criterios[c.segmento] = c; });
   renderMatrix(resumo);
 }
