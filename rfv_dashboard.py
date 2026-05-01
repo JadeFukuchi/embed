@@ -1,4 +1,3 @@
-import json
 import requests
 from flask import Flask, jsonify, render_template_string
 
@@ -13,58 +12,17 @@ HEADERS = {
     "Content-Type": "application/json",
 }
 
-# row/col: position in 3x3 RFV matrix
-# row 1 = top (alta recência), row 3 = bottom (baixa recência)
-# col 1 = left (baixa freq/valor), col 3 = right (alta freq/valor)
+# row 1 = high recency (top), row 3 = low recency (bottom)
+# col 1 = low F/V (left),    col 3 = high F/V (right)
 SEGMENTOS = [
-    {
-        "nome": "Campeão",
-        "cor": "#F59E0B", "texto": "#fff", "icone": "🏆",
-        "row": 1, "col": 3,
-        "tooltip": "Compraram recentemente, com alta frequência e alto valor. São seus melhores clientes — recompense e peça indicações.",
-    },
-    {
-        "nome": "Fiel",
-        "cor": "#10B981", "texto": "#fff", "icone": "💚",
-        "row": 2, "col": 3,
-        "tooltip": "Compram com regularidade e bom valor. Ofereça programas de fidelidade e upsells para elevá-los a Campeão.",
-    },
-    {
-        "nome": "Não Pode Perder",
-        "cor": "#EF4444", "texto": "#fff", "icone": "🚨",
-        "row": 3, "col": 3,
-        "tooltip": "Alto valor histórico, mas não compram há muito tempo. Prioridade máxima: reative com ofertas exclusivas ou contato direto.",
-    },
-    {
-        "nome": "Em Risco",
-        "cor": "#F97316", "texto": "#fff", "icone": "⚠️",
-        "row": 3, "col": 2,
-        "tooltip": "Compravam com frequência mas sumiram. Envie ofertas personalizadas ou pesquise o motivo do afastamento.",
-    },
-    {
-        "nome": "Potencial",
-        "cor": "#3B82F6", "texto": "#fff", "icone": "🌱",
-        "row": 1, "col": 2,
-        "tooltip": "Clientes recentes com potencial crescente. Com o incentivo certo evoluem para Fiel ou Campeão.",
-    },
-    {
-        "nome": "Novo Cliente",
-        "cor": "#8B5CF6", "texto": "#fff", "icone": "✨",
-        "row": 1, "col": 1,
-        "tooltip": "Compraram pela primeira vez recentemente. Foque em onboarding e segunda compra para fidelizá-los.",
-    },
-    {
-        "nome": "Hibernando",
-        "cor": "#6B7280", "texto": "#fff", "icone": "😴",
-        "row": 3, "col": 1,
-        "tooltip": "Compraram pouco e há muito tempo. Precisam de uma oferta agressiva ou campanha de reativação para voltar.",
-    },
-    {
-        "nome": "Em Desenvolvimento",
-        "cor": "#D1D5DB", "texto": "#374151", "icone": "📈",
-        "row": 2, "col": 2,
-        "tooltip": "Padrão médio em recência, frequência e valor. Acompanhe e incentive compras para acelerar a evolução.",
-    },
+    {"nome": "Campeão",            "cor": "#F59E0B", "texto": "#fff",    "icone": "🏆", "row": 1, "col": 3},
+    {"nome": "Fiel",               "cor": "#10B981", "texto": "#fff",    "icone": "💚", "row": 2, "col": 3},
+    {"nome": "Não Pode Perder",    "cor": "#EF4444", "texto": "#fff",    "icone": "🚨", "row": 3, "col": 3},
+    {"nome": "Em Risco",           "cor": "#F97316", "texto": "#fff",    "icone": "⚠️", "row": 3, "col": 2},
+    {"nome": "Potencial",          "cor": "#3B82F6", "texto": "#fff",    "icone": "🌱", "row": 1, "col": 2},
+    {"nome": "Novo Cliente",       "cor": "#8B5CF6", "texto": "#fff",    "icone": "✨", "row": 1, "col": 1},
+    {"nome": "Hibernando",         "cor": "#6B7280", "texto": "#fff",    "icone": "😴", "row": 3, "col": 1},
+    {"nome": "Em Desenvolvimento", "cor": "#D1D5DB", "texto": "#374151", "icone": "📈", "row": 2, "col": 2},
 ]
 
 
@@ -127,7 +85,27 @@ def api_clientes(segmento):
     return jsonify(rows or [])
 
 
-HTML = """<!DOCTYPE html>
+@app.route("/api/criterios")
+def api_criterios():
+    rows = execute_sql("""
+        SELECT
+            segmento,
+            MIN(recencia_dias)  AS min_recencia,
+            MAX(recencia_dias)  AS max_recencia,
+            AVG(recencia_dias)  AS avg_recencia,
+            MIN(frequencia)     AS min_freq,
+            MAX(frequencia)     AS max_freq,
+            AVG(frequencia)     AS avg_freq,
+            MIN(valor_total)    AS min_valor,
+            MAX(valor_total)    AS max_valor,
+            AVG(valor_total)    AS avg_valor
+        FROM view_rfv
+        GROUP BY segmento
+    """)
+    return jsonify(rows or [])
+
+
+HTML = r"""<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -137,10 +115,9 @@ HTML = """<!DOCTYPE html>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
          background: #F3F4F6; color: #111827; min-height: 100vh; padding: 24px; }
-  h1  { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
+  h1   { font-size: 1.5rem; font-weight: 700; margin-bottom: 4px; }
   .sub { color: #6B7280; font-size: .85rem; margin-bottom: 28px; }
 
-  /* ---- Matrix layout ---- */
   .matrix-outer { display: flex; gap: 10px; align-items: stretch; margin-bottom: 32px; }
 
   .y-axis {
@@ -160,8 +137,9 @@ HTML = """<!DOCTYPE html>
   .matrix {
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    grid-template-rows: repeat(3, 155px);
+    grid-template-rows: repeat(3, 1fr);
     gap: 8px;
+    height: 480px;
   }
 
   .x-axis {
@@ -173,33 +151,35 @@ HTML = """<!DOCTYPE html>
     text-transform: uppercase; letter-spacing: 1px; color: #6B7280; margin-top: 2px;
   }
 
-  /* ---- Cards ---- */
   .card {
-    border-radius: 10px; padding: 14px 12px; cursor: pointer;
+    border-radius: 10px; padding: 12px; cursor: pointer;
     transition: transform .15s, box-shadow .15s;
     box-shadow: 0 1px 4px rgba(0,0,0,.12);
     position: relative; display: flex; flex-direction: column;
-    justify-content: space-between; overflow: visible; z-index: 1;
+    justify-content: space-between; overflow: hidden; z-index: 1;
+    height: 100%; min-height: 0;
   }
-  .card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.2); z-index: 10; }
+  .card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,.2);
+                z-index: 10; overflow: visible; }
   .card.active { outline: 3px solid #1D4ED8; outline-offset: 2px; }
-  .card-empty { background: #F9FAFB; border: 2px dashed #E5E7EB; border-radius: 10px; }
-  .card .icone { font-size: 1.4rem; }
-  .card .nome  { font-size: .8rem; font-weight: 700; margin: 4px 0 10px; line-height: 1.2; }
-  .card .stat  { font-size: .68rem; opacity: .9; }
-  .card .stat b { font-size: .82rem; display: block; font-weight: 700; }
+  .card-empty  { background: #F9FAFB; border: 2px dashed #E5E7EB; border-radius: 10px; }
+  .card .icone { font-size: 1.3rem; line-height: 1; }
+  .card .nome  { font-size: .78rem; font-weight: 700; margin: 3px 0 8px; line-height: 1.2; }
+  .card .stat  { font-size: .65rem; opacity: .9; }
+  .card .stat b { font-size: .78rem; display: block; font-weight: 700; }
 
-  /* ---- Tooltip ---- */
   .tip {
     display: none; position: absolute;
     bottom: calc(100% + 10px); left: 50%; transform: translateX(-50%);
     background: #111827; color: #F9FAFB;
-    font-size: .72rem; line-height: 1.5; font-weight: 400;
-    padding: 9px 13px; border-radius: 8px; width: 210px;
-    text-align: center; z-index: 300;
-    box-shadow: 0 4px 16px rgba(0,0,0,.3);
+    font-size: .72rem; line-height: 1.7; font-weight: 400;
+    padding: 10px 14px; border-radius: 8px; width: 250px;
+    text-align: left; z-index: 400;
+    box-shadow: 0 4px 16px rgba(0,0,0,.35);
     pointer-events: none; white-space: normal;
   }
+  .tip strong { display: block; font-size: .78rem; margin-bottom: 6px;
+                border-bottom: 1px solid rgba(255,255,255,.2); padding-bottom: 5px; }
   .tip::after {
     content: ''; position: absolute;
     top: 100%; left: 50%; transform: translateX(-50%);
@@ -207,13 +187,26 @@ HTML = """<!DOCTYPE html>
   }
   .card:hover .tip { display: block; }
 
-  /* ---- Table ---- */
   .tabela-wrap { background: #fff; border-radius: 12px; padding: 24px;
                  box-shadow: 0 1px 3px rgba(0,0,0,.1); overflow-x: auto; }
-  .tabela-titulo { font-size: 1.1rem; font-weight: 600; margin-bottom: 16px; }
+  .tabela-header { display: flex; align-items: center;
+                   justify-content: space-between; margin-bottom: 16px; }
+  .tabela-titulo { font-size: 1.1rem; font-weight: 600; }
+  .btn-export {
+    background: #1D4ED8; color: #fff; border: none; border-radius: 6px;
+    padding: 8px 18px; font-size: .82rem; font-weight: 600;
+    cursor: pointer; transition: background .15s; white-space: nowrap;
+  }
+  .btn-export:hover { background: #1E40AF; }
   table { width: 100%; border-collapse: collapse; font-size: .875rem; }
-  th { text-align: left; padding: 10px 12px; background: #F9FAFB;
-       border-bottom: 2px solid #E5E7EB; font-weight: 600; color: #6B7280; white-space: nowrap; }
+  th {
+    text-align: left; padding: 10px 12px; background: #F9FAFB;
+    border-bottom: 2px solid #E5E7EB; font-weight: 600; color: #6B7280;
+    white-space: nowrap; user-select: none;
+  }
+  th.sortable { cursor: pointer; }
+  th.sortable:hover { background: #F3F4F6; color: #374151; }
+  th.sorted { color: #1D4ED8; }
   td { padding: 10px 12px; border-bottom: 1px solid #F3F4F6; }
   tr:last-child td { border-bottom: none; }
   tr:hover td { background: #F9FAFB; }
@@ -223,7 +216,7 @@ HTML = """<!DOCTYPE html>
 </head>
 <body>
 <h1>📊 Matriz RFV — Pano Ecommerce</h1>
-<p class="sub">Passe o mouse sobre um segmento para ver sua descrição. Clique para ver os clientes.</p>
+<p class="sub">Passe o mouse sobre um segmento para ver os critérios reais. Clique para ver os clientes.</p>
 
 <div class="matrix-outer">
   <div class="y-axis">
@@ -242,47 +235,84 @@ HTML = """<!DOCTYPE html>
 </div>
 
 <div class="tabela-wrap" id="tabela-wrap" style="display:none">
-  <div class="tabela-titulo" id="tabela-titulo"></div>
+  <div class="tabela-header">
+    <div class="tabela-titulo" id="tabela-titulo"></div>
+    <button class="btn-export" onclick="exportCSV()">&#11015; Exportar CSV</button>
+  </div>
   <div id="tabela-conteudo"></div>
 </div>
 
 <script>
-let segmentoAtivo = null;
+var allClientes  = [];
+var criterios    = {};
+var sortCol      = -1;
+var sortDir      = 1;
+var segmentoAtivo = null;
 
-async function carregarResumo() {
-  const res = await fetch('/api/resumo');
-  const data = await res.json();
-  const matrix = document.getElementById('matrix');
+var COL_KEYS   = ['customer_name','customer_email','telefone','documento','nascimento','total_pedidos','total_gasto'];
+var COL_LABELS = ['Nome','Email','Telefone','Documento','Nascimento','Pedidos','Total Gasto'];
+
+async function init() {
+  var r1 = fetch('/api/resumo');
+  var r2 = fetch('/api/criterios');
+  var resumo = await (await r1).json();
+  var crit   = await (await r2).json();
+  crit.forEach(function(c) { criterios[c.segmento] = c; });
+  renderMatrix(resumo);
+}
+
+function renderMatrix(data) {
+  var matrix = document.getElementById('matrix');
+  var byPos  = {};
+  var colW   = [0, 0, 0];
+  var rowW   = [0, 0, 0];
+
+  data.forEach(function(s) {
+    byPos[s.row + '-' + s.col] = s;
+    colW[s.col - 1] += s.total_clientes;
+    rowW[s.row - 1] += s.total_clientes;
+  });
+
+  var maxW = Math.max.apply(null, colW.concat(rowW).concat([1]));
+  var minW = maxW * 0.15;
+  var cw = colW.map(function(w) { return Math.max(w, minW); });
+  var rw = rowW.map(function(w) { return Math.max(w, minW); });
+
+  matrix.style.gridTemplateColumns = cw.map(function(w) { return w + 'fr'; }).join(' ');
+  matrix.style.gridTemplateRows    = rw.map(function(w) { return w + 'fr'; }).join(' ');
   matrix.innerHTML = '';
 
-  const byPos = {};
-  data.forEach(s => { byPos[s.row + '-' + s.col] = s; });
-
-  for (let row = 1; row <= 3; row++) {
-    for (let col = 1; col <= 3; col++) {
-      const s = byPos[row + '-' + col];
+  for (var row = 1; row <= 3; row++) {
+    for (var col = 1; col <= 3; col++) {
+      var s = byPos[row + '-' + col];
       if (s) {
-        const card = document.createElement('div');
+        var card = document.createElement('div');
         card.className = 'card';
-        card.style.background = s.cor;
-        card.style.color = s.texto;
-        card.style.gridRow = row;
-        card.style.gridColumn = col;
+        card.style.background  = s.cor;
+        card.style.color       = s.texto;
+        card.style.gridRow     = row;
+        card.style.gridColumn  = col;
         card.innerHTML =
-          '<div class="tip">' + s.tooltip + '</div>' +
-          '<div><div class="icone">' + s.icone + '</div>' +
-          '<div class="nome">' + s.nome + '</div></div>' +
+          '<div class="tip">' + buildTooltip(s.nome) + '</div>' +
           '<div>' +
-          '<div class="stat">Clientes<b>' + s.total_clientes.toLocaleString('pt-BR') + '</b></div>' +
-          '<div class="stat" style="margin-top:3px">Receita<b>R$ ' +
-          s.receita_total.toLocaleString('pt-BR', {minimumFractionDigits:2}) + '</b></div>' +
+            '<div class="icone">' + s.icone + '</div>' +
+            '<div class="nome">'  + s.nome  + '</div>' +
+          '</div>' +
+          '<div>' +
+            '<div class="stat">Clientes<b>' +
+              s.total_clientes.toLocaleString('pt-BR') + '</b></div>' +
+            '<div class="stat" style="margin-top:2px">Receita<b>R$ ' +
+              s.receita_total.toLocaleString('pt-BR',{minimumFractionDigits:2}) +
+            '</b></div>' +
           '</div>';
-        card.addEventListener('click', () => abrirSegmento(s.nome, card));
+        (function(nome, el) {
+          el.addEventListener('click', function() { abrirSegmento(nome, el); });
+        })(s.nome, card);
         matrix.appendChild(card);
       } else {
-        const empty = document.createElement('div');
-        empty.className = 'card-empty';
-        empty.style.gridRow = row;
+        var empty = document.createElement('div');
+        empty.className   = 'card-empty';
+        empty.style.gridRow    = row;
         empty.style.gridColumn = col;
         matrix.appendChild(empty);
       }
@@ -290,49 +320,139 @@ async function carregarResumo() {
   }
 }
 
+function buildTooltip(nome) {
+  var c = criterios[nome];
+  if (!c) return '<strong>' + nome + '</strong>Carregando dados...';
+
+  function fmtV(v) {
+    return 'R$ ' + parseFloat(v).toLocaleString('pt-BR',
+      {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+  function fmtDias(v) {
+    var d = Math.round(v);
+    return d === 1 ? '1 dia' : d + ' dias';
+  }
+
+  var html = '<strong>' + nome + '</strong>';
+  if (c.min_recencia != null) {
+    html += '📅 Última compra: de ' + fmtDias(c.min_recencia) +
+            ' a ' + fmtDias(c.max_recencia) + ' atrás' +
+            ' (média: ' + fmtDias(c.avg_recencia) + ')<br>';
+  }
+  if (c.min_freq != null) {
+    html += '🛒 Pedidos: ' + c.min_freq + ' a ' + c.max_freq +
+            ' (média: ' + parseFloat(c.avg_freq).toFixed(1) + ')<br>';
+  }
+  if (c.min_valor != null) {
+    html += '💰 Gasto total: ' + fmtV(c.min_valor) +
+            ' – ' + fmtV(c.max_valor);
+  }
+  return html;
+}
+
 async function abrirSegmento(nome, card) {
-  document.querySelectorAll('.card').forEach(c => c.classList.remove('active'));
+  document.querySelectorAll('.card').forEach(function(c) { c.classList.remove('active'); });
   card.classList.add('active');
   segmentoAtivo = nome;
+  sortCol = -1;
+  sortDir = 1;
 
-  const wrap = document.getElementById('tabela-wrap');
-  const titulo = document.getElementById('tabela-titulo');
-  const conteudo = document.getElementById('tabela-conteudo');
+  var wrap     = document.getElementById('tabela-wrap');
+  var titulo   = document.getElementById('tabela-titulo');
+  var conteudo = document.getElementById('tabela-conteudo');
 
   wrap.style.display = 'block';
   titulo.textContent = 'Clientes — ' + nome;
   conteudo.innerHTML = '<p class="loading">Carregando...</p>';
-  wrap.scrollIntoView({behavior: 'smooth', block: 'start'});
+  wrap.scrollIntoView({behavior:'smooth', block:'start'});
 
-  const res = await fetch('/api/clientes/' + encodeURIComponent(nome));
-  const clientes = await res.json();
+  var res = await fetch('/api/clientes/' + encodeURIComponent(nome));
+  allClientes = await res.json();
 
-  if (!clientes.length) {
+  if (!allClientes.length) {
     conteudo.innerHTML = '<p class="vazio">Nenhum cliente neste segmento.</p>';
     return;
   }
+  renderTabela();
+}
 
-  let rows = '';
-  clientes.forEach(c => {
+function renderTabela() {
+  var conteudo = document.getElementById('tabela-conteudo');
+  var sorted = allClientes.slice().sort(function(a, b) {
+    if (sortCol < 0) return 0;
+    var key = COL_KEYS[sortCol];
+    var va = a[key] != null ? a[key] : '';
+    var vb = b[key] != null ? b[key] : '';
+    var na = parseFloat(va), nb = parseFloat(vb);
+    if (!isNaN(na) && !isNaN(nb)) return (na - nb) * sortDir;
+    return String(va).localeCompare(String(vb), 'pt-BR') * sortDir;
+  });
+
+  var ths = COL_LABELS.map(function(label, i) {
+    var arrow = sortCol === i ? (sortDir === 1 ? ' ▲' : ' ▼') : '';
+    var cls   = 'sortable' + (sortCol === i ? ' sorted' : '');
+    return '<th class="' + cls + '" data-col="' + i + '">' + label + arrow + '</th>';
+  }).join('');
+
+  var rows = '';
+  sorted.forEach(function(c) {
     rows += '<tr>' +
-      '<td>' + (c.customer_name || '—') + '</td>' +
+      '<td>' + (c.customer_name  || '—') + '</td>' +
       '<td>' + (c.customer_email || '—') + '</td>' +
-      '<td>' + (c.telefone || '—') + '</td>' +
-      '<td>' + (c.documento || '—') + '</td>' +
+      '<td>' + (c.telefone       || '—') + '</td>' +
+      '<td>' + (c.documento      || '—') + '</td>' +
       '<td>' + (c.nascimento ? c.nascimento.substring(0,10) : '—') + '</td>' +
       '<td>' + c.total_pedidos + '</td>' +
-      '<td>R$ ' + parseFloat(c.total_gasto).toLocaleString('pt-BR',{minimumFractionDigits:2}) + '</td>' +
+      '<td>R$ ' + parseFloat(c.total_gasto).toLocaleString('pt-BR',{minimumFractionDigits:2}) + '</td>' +
       '</tr>';
   });
 
   conteudo.innerHTML =
-    '<table><thead><tr>' +
-    '<th>Nome</th><th>Email</th><th>Telefone</th>' +
-    '<th>Documento</th><th>Nascimento</th><th>Pedidos</th><th>Total Gasto</th>' +
-    '</tr></thead><tbody>' + rows + '</tbody></table>';
+    '<table><thead><tr>' + ths + '</tr></thead>' +
+    '<tbody>' + rows + '</tbody></table>';
+
+  conteudo.querySelectorAll('th.sortable').forEach(function(th) {
+    th.addEventListener('click', function() {
+      var col = parseInt(th.dataset.col);
+      if (sortCol === col) { sortDir *= -1; }
+      else { sortCol = col; sortDir = 1; }
+      renderTabela();
+    });
+  });
 }
 
-carregarResumo();
+function exportCSV() {
+  if (!allClientes.length) return;
+  var rows = [COL_LABELS.join(',')];
+  allClientes.forEach(function(c) {
+    var vals = [
+      c.customer_name  || '',
+      c.customer_email || '',
+      c.telefone       || '',
+      c.documento      || '',
+      c.nascimento ? c.nascimento.substring(0,10) : '',
+      c.total_pedidos,
+      parseFloat(c.total_gasto || 0).toFixed(2)
+    ].map(function(v) {
+      var s = String(v);
+      return (s.indexOf(',') >= 0 || s.indexOf('"') >= 0)
+        ? '"' + s.replace(/"/g, '""') + '"' : s;
+    });
+    rows.push(vals.join(','));
+  });
+  var csv  = '﻿' + rows.join('\r\n');
+  var blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
+  var url  = URL.createObjectURL(blob);
+  var a    = document.createElement('a');
+  a.href     = url;
+  a.download = 'clientes_' + (segmentoAtivo||'rfv').replace(/\s+/g,'_') + '.csv';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+init();
 </script>
 </body>
 </html>"""
