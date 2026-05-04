@@ -84,7 +84,7 @@ def processar(phone, mensagem):
     if estado == "aguardando_escolha":
         if "agente" in msg_lower:
             set_estado(phone, "aguardando_numero")
-            return "Ok! Me fala seu número de WhatsApp com DDD (ex: 5511999999999). Assim vou te direcionar para o agente correto. 😊"
+            return "Ok! Me fala seu número de WhatsApp com DDD (ex: 11999999999). Assim vou te direcionar para o agente correto. 😊"
         if "jade" in msg_lower:
             set_estado(phone, "aguardando_senha")
             return "Olá, Jade! Me fala a senha de acesso:"
@@ -93,7 +93,7 @@ def processar(phone, mensagem):
     if estado == "aguardando_numero":
         numero = "".join(filter(str.isdigit, msg))
         if len(numero) < 8:
-            return "Por favor, me manda seu número com DDD (ex: 5511999999999)."
+            return "Por favor, me manda seu número com DDD (ex: 11999999999)."
 
         autorizado = get_autorizado(numero)
         if not autorizado:
