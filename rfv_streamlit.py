@@ -83,45 +83,50 @@ def load_criterios():
 @st.cache_data(ttl=300)
 def load_clientes(segmento: str) -> pd.DataFrame:
     seg = segmento.replace("'", "''")
+
+    # Query 1: dados do RFV — mesma fonte que o agente usa
     rows = execute_sql(f"""
-        SELECT
-            r.customer_name,
-            r.customer_email,
-            COALESCE(o.total_pedidos, 0)   AS total_pedidos,
-            COALESCE(o.total_gasto, 0.0)   AS total_gasto,
-            o.telefone,
-            o.documento,
-            o.nascimento
-        FROM view_rfv r
-        LEFT JOIN (
-            SELECT
-                customer_email,
-                COUNT(DISTINCT id)         AS total_pedidos,
-                SUM(total)                 AS total_gasto,
-                MAX(customer_phone)        AS telefone,
-                MAX(customer_cgc)          AS documento,
-                MAX(customer_birthday)     AS nascimento
-            FROM view_orders
-            WHERE payment_status = 'approved' AND status != 'canceled'
-            GROUP BY customer_email
-        ) o ON o.customer_email = r.customer_email
-        WHERE r.segmento = '{seg}'
-        ORDER BY total_gasto DESC
+        SELECT customer_name, customer_email,
+               frequencia, valor_total, rfv_score,
+               ultima_compra, dias_recencia
+        FROM view_rfv
+        WHERE segmento = '{seg}'
+        ORDER BY rfv_score DESC
     """)
     if not rows:
         return pd.DataFrame()
     df = pd.DataFrame(rows)
-    df["nascimento"] = df["nascimento"].astype(str).str[:10].replace("None", "").replace("nan", "")
+
+    # Query 2: telefone/CPF/nascimento dos mesmos clientes (query pequena)
+    emails_list = [r["customer_email"] for r in rows if r.get("customer_email")]
+    if emails_list:
+        escaped = "','".join(e.replace("'", "''") for e in emails_list[:500])
+        detail = execute_sql(f"""
+            SELECT customer_email,
+                   MAX(customer_phone)    AS telefone,
+                   MAX(customer_cgc)      AS documento,
+                   MAX(customer_birthday) AS nascimento
+            FROM view_orders
+            WHERE customer_email IN ('{escaped}')
+            GROUP BY customer_email
+        """)
+        if detail:
+            detail_map = {d["customer_email"]: d for d in detail}
+            df["telefone"]  = df["customer_email"].map(lambda e: detail_map.get(e, {}).get("telefone", ""))
+            df["documento"] = df["customer_email"].map(lambda e: detail_map.get(e, {}).get("documento", ""))
+            df["nascimento"] = df["customer_email"].map(lambda e: str(detail_map.get(e, {}).get("nascimento") or "")[:10])
+
     df = df.rename(columns={
         "customer_name":  "Nome",
         "customer_email": "Email",
-        "total_pedidos":  "Pedidos",
-        "total_gasto":    "Total Gasto (R$)",
-        "telefone":       "Telefone",
-        "documento":      "CPF/CNPJ",
-        "nascimento":     "Nascimento",
+        "frequencia":     "Pedidos",
+        "valor_total":    "Total Gasto (R$)",
+        "rfv_score":      "Score RFV",
+        "ultima_compra":  "Última Compra",
+        "dias_recencia":  "Recência (dias)",
     })
-    df["Total Gasto (R$)"] = df["Total Gasto (R$)"].apply(lambda v: round(float(v), 2))
+    df["Total Gasto (R$)"] = df["Total Gasto (R$)"].apply(lambda v: round(float(v or 0), 2))
+    df["Score RFV"] = df["Score RFV"].apply(lambda v: round(float(v or 0), 1))
     return df
 
 
@@ -278,17 +283,23 @@ if df.empty:
     st.info("Nenhum cliente encontrado neste segmento.")
     st.stop()
 
-st.caption(f"{len(df)} clientes (ordenados por maior gasto)")
+st.caption(f"{len(df)} clientes (ordenados por Score RFV)")
+
+cols_order = ["Nome", "Email", "Score RFV", "Pedidos", "Total Gasto (R$)",
+              "Recência (dias)", "Última Compra", "Telefone", "CPF/CNPJ", "Nascimento"]
+cols_show = [c for c in cols_order if c in df.columns]
 
 col_table, _ = st.columns([1, 0.001])
 with col_table:
     st.dataframe(
-        df,
+        df[cols_show],
         width="stretch",
         hide_index=True,
         column_config={
-            "Pedidos":         st.column_config.NumberColumn(format="%d"),
+            "Pedidos":          st.column_config.NumberColumn(format="%d"),
             "Total Gasto (R$)": st.column_config.NumberColumn(format="R$ %.2f"),
+            "Score RFV":        st.column_config.NumberColumn(format="%.1f"),
+            "Recência (dias)":  st.column_config.NumberColumn(format="%d"),
         },
     )
 
