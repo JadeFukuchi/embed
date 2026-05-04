@@ -84,12 +84,20 @@ def load_criterios():
 def load_clientes(segmento: str) -> pd.DataFrame:
     seg = segmento.replace("'", "''")
 
-    # Query 1: top 500 clientes por rfv_score — igual ao agente consulta view_rfv
+    # Query 1: agrupa por cliente (view_rfv tem 1 linha por pedido)
+    # COUNT(*) = nº de pedidos no segmento, igual ao que o agente conta
     rfv_rows = execute_sql(f"""
-        SELECT customer_name, customer_email, rfv_score, dias_recencia, ultima_compra
+        SELECT
+            customer_name,
+            customer_email,
+            COUNT(*)           AS pedidos_segmento,
+            MAX(rfv_score)     AS rfv_score,
+            MIN(dias_recencia) AS dias_recencia,
+            MAX(ultima_compra) AS ultima_compra
         FROM view_rfv
         WHERE segmento = '{seg}'
-        ORDER BY rfv_score DESC
+        GROUP BY customer_name, customer_email
+        ORDER BY pedidos_segmento DESC, rfv_score DESC
         LIMIT 500
     """)
     if not rfv_rows:
@@ -123,7 +131,7 @@ def load_clientes(segmento: str) -> pd.DataFrame:
             "Nome":             r.get("customer_name", ""),
             "Email":            email,
             "Score RFV":        round(float(r.get("rfv_score") or 0), 1),
-            "Pedidos":          int(o.get("total_pedidos") or 0),
+            "Pedidos":          int(r.get("pedidos_segmento") or 0),
             "Total Gasto (R$)": round(float(o.get("total_gasto") or 0), 2),
             "Recência (dias)":  int(r.get("dias_recencia") or 0),
             "Última Compra":    str(r.get("ultima_compra") or "")[:10],
