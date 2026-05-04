@@ -84,50 +84,55 @@ def load_criterios():
 def load_clientes(segmento: str) -> pd.DataFrame:
     seg = segmento.replace("'", "''")
 
-    # Query 1: dados do RFV — mesma fonte que o agente usa
-    rows = execute_sql(f"""
-        SELECT customer_name, customer_email,
-               frequencia, valor_total, rfv_score,
-               ultima_compra, dias_recencia
+    # Query 1: top 500 clientes por rfv_score — igual ao agente consulta view_rfv
+    rfv_rows = execute_sql(f"""
+        SELECT customer_name, customer_email, rfv_score, dias_recencia, ultima_compra
         FROM view_rfv
         WHERE segmento = '{seg}'
         ORDER BY rfv_score DESC
+        LIMIT 500
     """)
-    if not rows:
+    if not rfv_rows:
         return pd.DataFrame()
-    df = pd.DataFrame(rows)
 
-    # Query 2: telefone/CPF/nascimento dos mesmos clientes (query pequena)
-    emails_list = [r["customer_email"] for r in rows if r.get("customer_email")]
-    if emails_list:
-        escaped = "','".join(e.replace("'", "''") for e in emails_list[:500])
-        detail = execute_sql(f"""
-            SELECT customer_email,
-                   MAX(customer_phone)    AS telefone,
-                   MAX(customer_cgc)      AS documento,
-                   MAX(customer_birthday) AS nascimento
-            FROM view_orders
-            WHERE customer_email IN ('{escaped}')
-            GROUP BY customer_email
-        """)
-        if detail:
-            detail_map = {d["customer_email"]: d for d in detail}
-            df["telefone"]  = df["customer_email"].map(lambda e: detail_map.get(e, {}).get("telefone", ""))
-            df["documento"] = df["customer_email"].map(lambda e: detail_map.get(e, {}).get("documento", ""))
-            df["nascimento"] = df["customer_email"].map(lambda e: str(detail_map.get(e, {}).get("nascimento") or "")[:10])
+    emails = list({r["customer_email"] for r in rfv_rows if r.get("customer_email")})
+    escaped = "','".join(e.replace("'", "''") for e in emails)
 
-    df = df.rename(columns={
-        "customer_name":  "Nome",
-        "customer_email": "Email",
-        "frequencia":     "Pedidos",
-        "valor_total":    "Total Gasto (R$)",
-        "rfv_score":      "Score RFV",
-        "ultima_compra":  "Última Compra",
-        "dias_recencia":  "Recência (dias)",
-    })
-    df["Total Gasto (R$)"] = df["Total Gasto (R$)"].apply(lambda v: round(float(v or 0), 2))
-    df["Score RFV"] = df["Score RFV"].apply(lambda v: round(float(v or 0), 1))
-    return df
+    # Query 2: pedidos reais e gasto real para esses emails específicos
+    order_rows = execute_sql(f"""
+        SELECT
+            customer_email,
+            COUNT(DISTINCT id)     AS total_pedidos,
+            SUM(total)             AS total_gasto,
+            MAX(customer_phone)    AS telefone,
+            MAX(customer_cgc)      AS documento,
+            MAX(customer_birthday) AS nascimento
+        FROM view_orders
+        WHERE payment_status = 'approved'
+          AND status != 'canceled'
+          AND customer_email IN ('{escaped}')
+        GROUP BY customer_email
+    """)
+    order_map = {r["customer_email"]: r for r in (order_rows or [])}
+
+    records = []
+    for r in rfv_rows:
+        email = r.get("customer_email", "")
+        o = order_map.get(email, {})
+        records.append({
+            "Nome":             r.get("customer_name", ""),
+            "Email":            email,
+            "Score RFV":        round(float(r.get("rfv_score") or 0), 1),
+            "Pedidos":          int(o.get("total_pedidos") or 0),
+            "Total Gasto (R$)": round(float(o.get("total_gasto") or 0), 2),
+            "Recência (dias)":  int(r.get("dias_recencia") or 0),
+            "Última Compra":    str(r.get("ultima_compra") or "")[:10],
+            "Telefone":         str(o.get("telefone") or ""),
+            "CPF/CNPJ":         str(o.get("documento") or ""),
+            "Nascimento":       str(o.get("nascimento") or "")[:10],
+        })
+
+    return pd.DataFrame(records)
 
 
 def build_treemap(resumo, criterios):
