@@ -1,5 +1,5 @@
 import requests
-from flask import Flask, jsonify, render_template_string
+from flask import Flask, jsonify
 
 SUPABASE_URL = "https://basesupabase.jadetrafego.com"
 SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogInNlcnZpY2Vfcm9sZSIsCiAgImlzcyI6ICJzdXBhYmFzZSIsCiAgImlhdCI6IDE3MTUwNTA4MDAsCiAgImV4cCI6IDE4NzI4MTcyMDAKfQ.blQRQlhMI9Y6f4OtlbiVHoSBt-gJoEM6MPjNrUPpPv0"
@@ -462,7 +462,7 @@ init();
 
 @app.route("/")
 def index():
-    return render_template_string(HTML)
+    return HTML, 200, {'Content-Type': 'text/html; charset=utf-8'}
 
 
 @app.route("/health")
