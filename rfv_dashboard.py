@@ -69,20 +69,20 @@ def api_clientes(segmento):
         SELECT
             r.customer_name,
             r.customer_email,
-            r.frequencia             AS total_pedidos,
+            COUNT(DISTINCT CASE WHEN o.payment_status = 'approved' AND o.status != 'canceled' THEN o.id END) AS total_pedidos,
             r.valor_total            AS total_gasto,
             MAX(o.customer_phone)    AS telefone,
             MAX(o.customer_cgc)      AS documento,
             MAX(o.customer_birthday) AS nascimento
         FROM (
-            SELECT customer_name, customer_email, frequencia, valor_total
+            SELECT customer_name, customer_email, valor_total
             FROM view_rfv
             WHERE segmento = '{seg}'
             ORDER BY valor_total DESC
             LIMIT 300
         ) r
         LEFT JOIN view_orders o ON o.customer_email = r.customer_email
-        GROUP BY r.customer_name, r.customer_email, r.frequencia, r.valor_total
+        GROUP BY r.customer_name, r.customer_email, r.valor_total
         ORDER BY r.valor_total DESC
     """)
     return jsonify(rows or [])
@@ -93,9 +93,9 @@ def api_criterios():
     rows = execute_sql("""
         SELECT
             segmento,
-            MIN(recencia_dias)  AS min_recencia,
-            MAX(recencia_dias)  AS max_recencia,
-            AVG(recencia_dias)  AS avg_recencia,
+            MIN(dias_recencia)  AS min_recencia,
+            MAX(dias_recencia)  AS max_recencia,
+            AVG(dias_recencia)  AS avg_recencia,
             MIN(frequencia)     AS min_freq,
             MAX(frequencia)     AS max_freq,
             AVG(frequencia)     AS avg_freq,
