@@ -89,21 +89,18 @@ def load_clientes(segmento: str) -> pd.DataFrame:
             r.customer_email,
             COUNT(DISTINCT CASE
                 WHEN o.payment_status = 'approved' AND o.status != 'canceled'
-                THEN o.id END)           AS total_pedidos,
-            r.valor_total                AS total_gasto,
-            MAX(o.customer_phone)        AS telefone,
-            MAX(o.customer_cgc)          AS documento,
-            MAX(o.customer_birthday)     AS nascimento
-        FROM (
-            SELECT customer_name, customer_email, valor_total
-            FROM view_rfv
-            WHERE segmento = '{seg}'
-            ORDER BY valor_total DESC
-            LIMIT 300
-        ) r
+                THEN o.id END)                                AS total_pedidos,
+            SUM(CASE
+                WHEN o.payment_status = 'approved' AND o.status != 'canceled'
+                THEN o.total ELSE 0 END)                     AS total_gasto,
+            MAX(o.customer_phone)                            AS telefone,
+            MAX(o.customer_cgc)                              AS documento,
+            MAX(o.customer_birthday)                         AS nascimento
+        FROM view_rfv r
         LEFT JOIN view_orders o ON o.customer_email = r.customer_email
-        GROUP BY r.customer_name, r.customer_email, r.valor_total
-        ORDER BY r.valor_total DESC
+        WHERE r.segmento = '{seg}'
+        GROUP BY r.customer_name, r.customer_email
+        ORDER BY total_gasto DESC
     """)
     if not rows:
         return pd.DataFrame()
