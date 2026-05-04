@@ -87,19 +87,25 @@ def load_clientes(segmento: str) -> pd.DataFrame:
         SELECT
             r.customer_name,
             r.customer_email,
-            COUNT(DISTINCT CASE
-                WHEN o.payment_status = 'approved' AND o.status != 'canceled'
-                THEN o.id END)                                AS total_pedidos,
-            SUM(CASE
-                WHEN o.payment_status = 'approved' AND o.status != 'canceled'
-                THEN o.total ELSE 0 END)                     AS total_gasto,
-            MAX(o.customer_phone)                            AS telefone,
-            MAX(o.customer_cgc)                              AS documento,
-            MAX(o.customer_birthday)                         AS nascimento
+            COALESCE(o.total_pedidos, 0)   AS total_pedidos,
+            COALESCE(o.total_gasto, 0.0)   AS total_gasto,
+            o.telefone,
+            o.documento,
+            o.nascimento
         FROM view_rfv r
-        LEFT JOIN view_orders o ON o.customer_email = r.customer_email
+        LEFT JOIN (
+            SELECT
+                customer_email,
+                COUNT(DISTINCT id)         AS total_pedidos,
+                SUM(total)                 AS total_gasto,
+                MAX(customer_phone)        AS telefone,
+                MAX(customer_cgc)          AS documento,
+                MAX(customer_birthday)     AS nascimento
+            FROM view_orders
+            WHERE payment_status = 'approved' AND status != 'canceled'
+            GROUP BY customer_email
+        ) o ON o.customer_email = r.customer_email
         WHERE r.segmento = '{seg}'
-        GROUP BY r.customer_name, r.customer_email
         ORDER BY total_gasto DESC
     """)
     if not rows:
