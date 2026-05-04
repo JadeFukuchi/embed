@@ -278,7 +278,7 @@ col_table, _ = st.columns([1, 0.001])
 with col_table:
     st.dataframe(
         df,
-        use_container_width=True,
+        width="stretch",
         hide_index=True,
         column_config={
             "Pedidos":         st.column_config.NumberColumn(format="%d"),
