@@ -7,6 +7,9 @@ SUPABASE_URL = "https://basesupabase.jadetrafego.com"
 SUPABASE_SERVICE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogInNlcnZpY2Vfcm9sZSIsCiAgImlzcyI6ICJzdXBhYmFzZSIsCiAgImlhdCI6IDE3MTUwNTA4MDAsCiAgImV4cCI6IDE4NzI4MTcyMDAKfQ.blQRQlhMI9Y6f4OtlbiVHoSBt-gJoEM6MPjNrUPpPv0"
 JADE_PASSWORD = "jadedona"
 
+JADE_PHONE   = "5521987080442"
+PANO_API_URL = "http://localhost:5000"
+
 app = Flask(__name__)
 
 HEADERS = {
@@ -71,11 +74,35 @@ def lista_agentes(agentes):
     return "\n".join([f"• *{a['nome']}* — {a.get('descricao', '')}" for a in agentes])
 
 
+MODELOS_WPP = {
+    "1": "1", "haiku": "haiku",
+    "2": "2", "sonnet": "sonnet",
+    "3": "3", "opus": "opus",
+}
+MODELOS_NOME = {
+    "1": "Haiku", "haiku": "Haiku",
+    "2": "Sonnet", "sonnet": "Sonnet",
+    "3": "Opus",  "opus": "Opus",
+}
+
+
 def processar(phone, mensagem):
     conv = get_estado(phone)
     estado = conv.get("estado", "inicial")
     msg = mensagem.strip()
     msg_lower = msg.lower()
+
+    # Jade pode trocar o modelo a qualquer momento com "modelo X"
+    if phone == JADE_PHONE and msg_lower.startswith("modelo "):
+        escolha = msg_lower.split(" ", 1)[1].strip()
+        if escolha in MODELOS_WPP:
+            try:
+                requests.post(f"{PANO_API_URL}/modelo", json={"modelo": escolha}, timeout=10)
+                nome = MODELOS_NOME[escolha]
+                return f"✅ Modelo trocado para *{nome}*! Próximas perguntas usarão {nome}."
+            except Exception:
+                return "Erro ao trocar modelo. O agente está online?"
+        return "Modelo inválido. Use: *modelo 1* (Haiku), *modelo 2* (Sonnet) ou *modelo 3* (Opus)."
 
     if estado == "inicial":
         set_estado(phone, "aguardando_escolha")
