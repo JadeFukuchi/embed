@@ -59,7 +59,7 @@ def get_agente_config(nome):
 
 def chamar_agente(url_api, pergunta, session_id):
     try:
-        r = requests.post(url_api, json={"pergunta": pergunta, "session_id": session_id}, timeout=60)
+        r = requests.post(url_api, json={"pergunta": pergunta, "session_id": session_id}, timeout=180)
         if r.status_code == 200:
             return r.json().get("resposta", "Sem resposta do agente.")
     except Exception as e:
