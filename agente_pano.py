@@ -37,7 +37,7 @@ tools = [
             "Use view_orders para dados de pedidos (1 linha por pedido, sem duplicar faturamento). "
             "Use view_order_items para análise de produtos e variações (1 linha por item). "
             "Use view_trafego_geral para dados de mídia paga (meta, google, tiktok). "
-            "Use view_rfv para análise RFV de clientes (segmentação). "
+            "Use view_rfv_absoluta para análise RFV de clientes (segmentação principal, com critérios fixos e precisos — USE ESTA POR PADRÃO). ""Use view_rfv para análise RFV histórica comparativa (usa percentis da base completa). "
             "Campos de view_orders: id, code, total, subtotal, discount, status, payment_status, "
             "fulfillment_status, created_at, updated_at, customer_name, customer_email, customer_phone, "
             "city, state, payment_method, shipping_name, shipping_price. "
@@ -47,7 +47,7 @@ tools = [
             "Campos de view_trafego_geral: dia (date), fonte (text: meta/google/tiktok), "
             "investimento (numeric), impressoes (numeric), cliques (numeric), "
             "conversoes (numeric), receita_ads (numeric), cpm (numeric), cpc (numeric), ctr (numeric). "
-            "Campos de view_rfv: customer_email, customer_name, ultima_compra, primeira_compra, "
+            "Campos de view_rfv_absoluta e view_rfv: customer_email, customer_name, ultima_compra, primeira_compra, "
             "dias_recencia, frequencia, valor_total, r_score, f_score, v_score, rfv_score, segmento. "
             "Segmentos possíveis: Campeão, Fiel, Novo Cliente, Potencial, Não Pode Perder, Em Risco, Hibernando, Em Desenvolvimento. "
             "payment_status possíveis: approved, pending, denied, refunded, canceled. "
@@ -91,7 +91,7 @@ Regras importantes:
 - Para quantidade de itens vendidos, some item_quantity em view_order_items
 - Para ROAS: divida SUM(total) de view_orders (payment_status = 'approved' AND status != 'canceled') por SUM(investimento) de view_trafego_geral no mesmo período
 - Para CPV (custo por venda): divida SUM(investimento) de view_trafego_geral pelo número de pedidos aprovados (payment_status = 'approved' AND status != 'canceled')
-- Para análise RFV/segmentação de clientes, use view_rfv diretamente
+- Para análise RFV/segmentação de clientes, use SEMPRE view_rfv_absoluta (faixas fixas de recência/frequência/valor, mais precisa para ações de marketing). Use view_rfv apenas se o usuário pedir explicitamente a visão histórica comparativa
 - Responda sempre em português, de forma clara e direta
 - Formate valores monetários com R$ e duas casas decimais
 - Formate ROAS com duas casas decimais seguido de 'x' (ex: 3.45x)
