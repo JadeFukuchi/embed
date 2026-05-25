@@ -49,20 +49,20 @@ def execute_sql(sql):
 
 
 @st.cache_data(ttl=300)
-def load_resumo():
-    rows = execute_sql("""
+def load_resumo(view: str = "view_rfv"):
+    rows = execute_sql(f"""
         SELECT segmento,
                COUNT(*)         AS total_clientes,
                SUM(valor_total) AS receita_total
-        FROM view_rfv
+        FROM {view}
         GROUP BY segmento
     """)
     return {r["segmento"]: r for r in rows}
 
 
 @st.cache_data(ttl=300)
-def load_criterios():
-    rows = execute_sql("""
+def load_criterios(view: str = "view_rfv"):
+    rows = execute_sql(f"""
         SELECT
             segmento,
             MIN(dias_recencia) AS min_recencia,
@@ -74,14 +74,14 @@ def load_criterios():
             MIN(valor_total)   AS min_valor,
             MAX(valor_total)   AS max_valor,
             AVG(valor_total)   AS avg_valor
-        FROM view_rfv
+        FROM {view}
         GROUP BY segmento
     """)
     return {r["segmento"]: r for r in rows}
 
 
 @st.cache_data(ttl=300)
-def load_clientes(segmento: str) -> pd.DataFrame:
+def load_clientes(segmento: str, view: str = "view_rfv") -> pd.DataFrame:
     seg = segmento.replace("'", "''")
 
     # Query 1: agrupa por cliente (view_rfv tem 1 linha por pedido)
@@ -94,7 +94,7 @@ def load_clientes(segmento: str) -> pd.DataFrame:
             MAX(rfv_score)     AS rfv_score,
             MIN(dias_recencia) AS dias_recencia,
             MAX(ultima_compra) AS ultima_compra
-        FROM view_rfv
+        FROM {view}
         WHERE segmento = '{seg}'
         GROUP BY customer_name, customer_email
         ORDER BY pedidos_segmento DESC, rfv_score DESC
@@ -219,11 +219,21 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.title("📊 Matriz RFV — Pano Ecommerce")
-st.caption("Passe o mouse sobre os segmentos para ver os critérios. Selecione um segmento para ver os clientes.")
+
+col_title, col_view = st.columns([3, 1])
+with col_view:
+    view_opcao = st.radio(
+        "Metodologia RFV",
+        options=["Histórica (percentis)", "Absoluta (critérios fixos)"],
+        index=0,
+        horizontal=False,
+    )
+view_selecionada = "view_rfv" if "Histórica" in view_opcao else "view_rfv_absoluta"
+st.caption(f"Passe o mouse sobre os segmentos para ver os critérios. Selecione um segmento para ver os clientes. | View: `{view_selecionada}`")
 
 with st.spinner("Carregando segmentos..."):
-    resumo = load_resumo()
-    criterios = load_criterios()
+    resumo = load_resumo(view_selecionada)
+    criterios = load_criterios(view_selecionada)
 
 if not resumo:
     st.error("Não foi possível carregar os dados. Verifique a conexão com o Supabase.")
@@ -290,7 +300,7 @@ if crit:
 st.subheader(f"{seg['icone']} Clientes — {sel}")
 
 with st.spinner("Carregando clientes..."):
-    df = load_clientes(sel)
+    df = load_clientes(sel, view_selecionada)
 
 if df.empty:
     st.info("Nenhum cliente encontrado neste segmento.")
