@@ -58,6 +58,8 @@ tools = [
             "Use view_trafego_geral para dados de mídia paga (meta, google, tiktok). "
             "Use view_rfv_absoluta para análise RFV de clientes (segmentação principal, com critérios fixos e precisos — USE ESTA POR PADRÃO). "
             "Use view_rfv para análise RFV histórica comparativa (usa percentis da base completa). "
+            "Use view_criativos_performance para análise de criativos/anúncios por plataforma (Meta e TikTok), com nomes normalizados e métricas consolidadas — USE ESTA para perguntas sobre criativos, anúncios, melhor criativo, performance de anúncio. "
+            "Campos de view_criativos_performance: plataforma (Meta/TikTok), criativo (nome normalizado), investimento, impressoes, cliques, compras, ctr, cpc, cpa, taxa_conversao, creative_url, primeiro_dia, ultimo_dia. "
             "Campos de view_orders: id, code, total, subtotal, discount, status, payment_status, "
             "fulfillment_status, created_at, updated_at, customer_name, customer_email, customer_phone, "
             "city, state, payment_method, shipping_name, shipping_price. "
