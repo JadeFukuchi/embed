@@ -1,0 +1,16 @@
+{
+  "name": "bagy-shopify-imagens",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Migracao de imagens de produtos Bagy/Dooca -> Shopify com redimensionamento automatico (limite de 20 megapixels)",
+  "main": "migrar-imagens.js",
+  "scripts": {
+    "diagnostico": "node diagnostico.js",
+    "migrar": "node migrar-imagens.js",
+    "teste": "node teste-offline.js"
+  },
+  "dependencies": {
+    "sharp": "^0.33.5"
+  },
+  "engines": { "node": ">=18" }
+}
